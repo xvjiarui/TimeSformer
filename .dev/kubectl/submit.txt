@@ -1,0 +1,7 @@
+#deit-b_divST_8x32_224_bs4.yaml
+#deit-s-s_divST_8x32_224_bs8.yaml
+#deit-s_divST_8x32_224_bs8.yaml
+#deit-t-s_divST_8x32_224_bs8.yaml
+#deit-t_divST_8x32_224_bs8.yaml
+#vit-b-s_divST_8x32_224_bs4.yaml
+#vit-b_divST_8x32_224_bs4.yaml

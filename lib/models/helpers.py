@@ -98,6 +98,8 @@ def load_pretrained(model, cfg=None, num_classes=1000, in_chans=3, filter_fn=Non
 
     if len(pretrained_model) == 0:
        state_dict = model_zoo.load_url(cfg['url'], progress=False, map_location='cpu')
+       if 'model' in state_dict:
+           state_dict = state_dict['model']
     else:
        try:
          state_dict = load_state_dict(pretrained_model)['model']

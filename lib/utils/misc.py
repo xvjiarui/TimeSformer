@@ -22,6 +22,18 @@ from lib.models.batchnorm_helper import SubBatchNorm3d
 logger = logging.get_logger(__name__)
 
 
+def _find_free_port():
+    import socket
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # Binding to port 0 will cause the OS to find an available port for us
+    sock.bind(("", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    # NOTE: there is still a chance the port could be taken by other processes.
+    return port
+
+
 def check_nan_losses(loss):
     """
     Determine whether the loss is NaN (not a number).
@@ -281,6 +293,10 @@ def launch_job(cfg, init_method, func, daemon=False):
         daemon (bool): The spawned processes’ daemon flag. If set to True,
             daemonic processes will be created
     """
+    if init_method == 'auto':
+        assert cfg.NUM_SHARDS == 1, "dist_url=auto not supported in multi-machine jobs."
+        port = _find_free_port()
+        init_method = f"tcp://localhost:{port}"
     if cfg.NUM_GPUS > 1:
         torch.multiprocessing.spawn(
             mpu.run,
@@ -370,3 +386,72 @@ def get_class_names(path, parent_path=None, subset_path=None):
             return
 
     return class_names, class_parent, subset_ids
+
+def auto_scale_workers(cfg, num_workers: int):
+    """
+    When the config is defined for certain number of workers (according to
+    ``cfg.SOLVER.REFERENCE_WORLD_SIZE``) that's different from the number of
+    workers currently in use, returns a new cfg where the total batch size
+    is scaled so that the per-GPU batch size stays the same as the
+    original ``IMS_PER_BATCH // REFERENCE_WORLD_SIZE``.
+
+    Other config options are also scaled accordingly:
+    * training steps and warmup steps are scaled inverse proportionally.
+    * learning rate are scaled proportionally, following :paper:`ImageNet in 1h`.
+
+    For example, with the original config like the following:
+
+    .. code-block:: yaml
+
+        IMS_PER_BATCH: 16
+        BASE_LR: 0.1
+        REFERENCE_WORLD_SIZE: 8
+        MAX_ITER: 5000
+        STEPS: (4000,)
+        CHECKPOINT_PERIOD: 1000
+
+    When this config is used on 16 GPUs instead of the reference number 8,
+    calling this method will return a new config with:
+
+    .. code-block:: yaml
+
+        IMS_PER_BATCH: 32
+        BASE_LR: 0.2
+        REFERENCE_WORLD_SIZE: 16
+        MAX_ITER: 2500
+        STEPS: (2000,)
+        CHECKPOINT_PERIOD: 500
+
+    Note that both the original config and this new config can be trained on 16 GPUs.
+    It's up to user whether to enable this feature (by setting ``REFERENCE_WORLD_SIZE``).
+
+    Returns:
+        CfgNode: a new config. Same as original if ``cfg.SOLVER.REFERENCE_WORLD_SIZE==0``.
+    """
+    old_world_size = cfg.SOLVER.REFERENCE_WORLD_SIZE
+    if old_world_size == 0 or old_world_size == num_workers:
+        return cfg
+    cfg = cfg.clone()
+    frozen = cfg.is_frozen()
+    cfg.defrost()
+
+    assert (
+        cfg.TRAIN.BATCH_SIZE % old_world_size == 0
+    ), "Invalid REFERENCE_WORLD_SIZE in config!"
+    scale = num_workers / old_world_size
+    bs = cfg.TRAIN.BATCH_SIZE = int(round(cfg.TRAIN.BATCH_SIZE * scale))
+    data_worker = cfg.DATA_LOADER.NUM_WORKERS = int(round(cfg.DATA_LOADER.NUM_WORKERS * scale))
+    # lr = cfg.SOLVER.BASE_LR = cfg.SOLVER.BASE_LR * scale
+    cfg.SOLVER.REFERENCE_WORLD_SIZE = num_workers  # maintain invariant
+    # logger.info(
+    #     f"Auto-scaling the config to batch_size={bs}, learning_rate={lr}, "
+    #     f"data worker={data_worker}."
+    # )
+    logger.info(
+        f"Auto-scaling the config to batch_size={bs}, "
+        f"data worker={data_worker}."
+    )
+
+    if frozen:
+        cfg.freeze()
+    return cfg

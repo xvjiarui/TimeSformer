@@ -7,6 +7,7 @@ import sys
 
 import lib.utils.checkpoint as cu
 from lib.config.defaults import get_cfg
+import os.path as osp
 
 
 def parse_args():
@@ -52,6 +53,9 @@ def parse_args():
         default="configs/Kinetics/SLOWFAST_4x16_R50.yaml",
         type=str,
     )
+    parser.add_argument("--num-gpus", type=int, default=None,
+                        help="number of gpus *per machine*")
+    parser.add_argument('--wandb', default=False, action='store_true', help='Use WandB to log experiments')
     parser.add_argument(
         "opts",
         help="See slowfast/config/defaults.py for all options",
@@ -85,8 +89,18 @@ def load_config(args):
         cfg.SHARD_ID = args.shard_id
     if hasattr(args, "rng_seed"):
         cfg.RNG_SEED = args.rng_seed
+    if args.num_gpus is not None:
+        cfg.NUM_GPUS = args.num_gpus
     if hasattr(args, "output_dir"):
         cfg.OUTPUT_DIR = args.output_dir
+    elif not len(cfg.OUTPUT_DIR):
+        # use config filename as default work_dir if cfg.work_dir is None
+        cfg.OUTPUT_DIR = osp.join('./work_dirs',
+                                   osp.splitext(osp.basename(args.cfg_file))[0])
+        # append number of GPUS
+        cfg.OUTPUT_DIR = cfg.OUTPUT_DIR + f'x{cfg.NUM_GPUS}'
+
+    cfg.WANDB = args.wandb
 
     # Create the checkpoint dir.
     cu.make_checkpoint_dir(cfg.OUTPUT_DIR)

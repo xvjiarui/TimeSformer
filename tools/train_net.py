@@ -19,6 +19,10 @@ from lib.datasets import loader
 from lib.models import build_model
 from lib.utils.meters import TrainMeter, ValMeter
 from lib.utils.multigrid import MultigridSchedule
+from lib.utils.misc import auto_scale_workers
+from lib.utils.distributed import get_world_size
+import os
+import os.path as osp
 
 from timm.data import Mixup
 from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
@@ -184,6 +188,7 @@ def train_epoch(
 
     # Log epoch stats.
     train_meter.log_epoch_stats(cur_epoch)
+    train_meter.write_last_stats()
     train_meter.reset()
 
 
@@ -305,6 +310,7 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg, writer=None):
                 preds=all_preds, labels=all_labels, global_step=cur_epoch
             )
 
+    val_meter.write_last_stats()
     val_meter.reset()
 
 
@@ -394,6 +400,16 @@ def train(cfg):
 
     # Setup logging format.
     logging.setup_logging(cfg.OUTPUT_DIR)
+
+    # Auto scaling
+    cfg = auto_scale_workers(cfg, num_workers=get_world_size())
+    if cfg.WANDB and du.is_master_proc(cfg.NUM_GPUS * cfg.NUM_SHARDS):
+        import wandb
+        os.makedirs(osp.join(cfg.OUTPUT_DIR, 'wandb'), exist_ok=True)
+        wandb.init(project='TimeSformer', name=osp.basename(cfg.OUTPUT_DIR),
+                   dir=f'{cfg.OUTPUT_DIR}', config=cfg, resume=True)
+    else:
+        wandb = None
 
     # Init multigrid.
     multigrid = None
@@ -507,6 +523,15 @@ def train(cfg):
         # Evaluate the model on validation set.
         if is_eval_epoch:
             eval_epoch(val_loader, model, val_meter, cur_epoch, cfg, writer)
+        if wandb is not None:
+            print('into wandb')
+            wandb_logs = {}
+            wandb_logs.update(train_meter.last_stats)
+            wandb_logs.update(val_meter.last_stats)
+            wandb.log(wandb_logs)
+            print('finish wandb')
+        du.synchronize()
+
 
     if writer is not None:
         writer.close()

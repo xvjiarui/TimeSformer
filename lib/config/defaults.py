@@ -257,6 +257,7 @@ _C.SLOWFAST.FUSION_KERNEL_SZ = 5
 _C.TIMESFORMER = CfgNode()
 _C.TIMESFORMER.ATTENTION_TYPE = 'divided_space_time'
 _C.TIMESFORMER.PRETRAINED_MODEL = ''
+_C.TIMESFORMER.PRETRAINED = True
 
 ## MixUp parameters
 _C.MIXUP = CfgNode()
@@ -398,6 +399,15 @@ _C.SOLVER.OPTIMIZING_METHOD = "sgd"
 
 # Base learning rate is linearly scaled with NUM_SHARDS.
 _C.SOLVER.BASE_LR_SCALE_NUM_SHARDS = False
+
+# The reference number of workers (GPUs) this config is meant to train with.
+# It takes no effect when set to 0.
+# With a non-zero value, it will be used by DefaultTrainer to compute a desired
+# per-worker batch size, and then scale the other related configs (total batch size,
+# learning rate, etc) to match the per-worker batch size.
+# See documentation of `DefaultTrainer.auto_scale_workers` for details:
+_C.SOLVER.REFERENCE_WORLD_SIZE = 0
+
 
 # ---------------------------------------------------------------------------- #
 # Misc options
@@ -785,6 +795,8 @@ _C.DEMO.COMMON_CLASS_NAMES = [
 # Slow-motion rate for the visualization. The visualized portions of the
 # video will be played `_C.DEMO.SLOWMO` times slower than usual speed.
 _C.DEMO.SLOWMO = 1
+
+_C.WANDB = False
 
 def _assert_and_infer_cfg(cfg):
     # BN assertions.

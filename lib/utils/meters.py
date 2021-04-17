@@ -276,6 +276,7 @@ class TrainMeter(object):
         self.extra_stats = {}
         self.extra_stats_total = {}
         self.log_period = cfg.LOG_PERIOD
+        self.last_stats = {}
 
     def reset(self):
         """
@@ -406,6 +407,23 @@ class TrainMeter(object):
             stats[key] = self.extra_stats_total[key] / self.num_samples
         logging.log_json_stats(stats)
 
+    def write_last_stats(self):
+        stats = {
+            "lr": self.lr,
+        }
+        if not self._cfg.DATA.MULTI_LABEL:
+            top1_err = self.num_top1_mis / self.num_samples
+            top5_err = self.num_top5_mis / self.num_samples
+            avg_loss = self.loss_total / self.num_samples
+            stats["top1_err"] = top1_err
+            stats["top5_err"] = top5_err
+            stats["loss"] = avg_loss
+        for key in self.extra_stats.keys():
+            stats[key] = self.extra_stats_total[key] / self.num_samples
+
+        self.last_stats.update(add_prefix(stats, 'train'))
+
+
 
 class ValMeter(object):
     """
@@ -439,6 +457,7 @@ class ValMeter(object):
         self.extra_stats = {}
         self.extra_stats_total = {}
         self.log_period = cfg.LOG_PERIOD
+        self.last_stats = {}
 
     def reset(self):
         """
@@ -568,6 +587,29 @@ class ValMeter(object):
 
         logging.log_json_stats(stats)
 
+    def write_last_stats(self):
+        stats = {}
+        if self._cfg.DATA.MULTI_LABEL:
+            stats["map"] = get_map(
+                torch.cat(self.all_preds).cpu().numpy(),
+                torch.cat(self.all_labels).cpu().numpy(),
+            )
+        else:
+            top1_err = self.num_top1_mis / self.num_samples
+            top5_err = self.num_top5_mis / self.num_samples
+            self.min_top1_err = min(self.min_top1_err, top1_err)
+            self.min_top5_err = min(self.min_top5_err, top5_err)
+
+            stats["top1_err"] = top1_err
+            stats["top5_err"] = top5_err
+            stats["min_top1_err"] = self.min_top1_err
+            stats["min_top5_err"] = self.min_top5_err
+
+        for key in self.extra_stats.keys():
+            stats[key] = self.extra_stats_total[key] / self.num_samples
+
+        self.last_stats.update(add_prefix(stats, 'val'))
+
 
 def get_map(preds, labels):
     """
@@ -594,3 +636,21 @@ def get_map(preds, labels):
 
     mean_ap = np.mean(aps)
     return mean_ap
+
+def add_prefix(inputs, prefix):
+    """Add prefix for dict.
+
+    Args:
+        inputs (dict): The input dict with str keys.
+        prefix (str): The prefix to add.
+
+    Returns:
+
+        dict: The dict with keys updated with ``prefix``.
+    """
+
+    outputs = dict()
+    for name, value in inputs.items():
+        outputs[f'{prefix}.{name}'] = value
+
+    return outputs
