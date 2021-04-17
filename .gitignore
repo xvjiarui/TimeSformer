@@ -118,6 +118,7 @@ venv.bak/
 *.log.json
 work_dirs/
 .dev/kubectl/*.sh
+data
 
 # Pytorch
 *.pth
