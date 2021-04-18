@@ -81,7 +81,7 @@ def submit(config, args, rest):
     copy_script = ''
     base_config = osp.splitext(osp.basename(config))[0]
     if args.copy:
-        copy_script += 'mkdir -p /mnt/dest/imagenet; gsutil -m rsync -erCUP /mnt/source/imagenet /mnt/dest/imagenet;' * 2  # noqa
+        copy_script += 'mkdir -p /mnt/dest/kinetics/kinetics400; gsutil -m rsync -erCUP /mnt/source/kinetics/kinetics400 /mnt/dest/kinetics/kinetics400;' * 2  # noqa
     template_dict = dict(
         job_name=base_config.lower().replace("_", "-")+f"x{args.gpus}" + "-",
         base_config=base_config,

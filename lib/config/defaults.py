@@ -433,7 +433,7 @@ _C.RNG_SEED = 1
 _C.LOG_PERIOD = 10
 
 # If True, log the model info.
-_C.LOG_MODEL_INFO = False
+_C.LOG_MODEL_INFO = True
 
 # Distributed backend.
 _C.DIST_BACKEND = "nccl"

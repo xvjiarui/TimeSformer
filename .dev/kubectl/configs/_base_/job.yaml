@@ -16,7 +16,7 @@ spec:
       restartPolicy: Never
       containers:
       - name: research
-        image: gitlab-registry.nautilus.optiputer.net/xvjiarui0826/TimeSformer:latest
+        image: gitlab-registry.nautilus.optiputer.net/xvjiarui0826/timesformer:latest
         imagePullPolicy: Always
         command: ["/bin/sh"] # replace this with your own job execution scripts
         args: ["-c", "rm -rf TimeSformer;
@@ -48,7 +48,7 @@ spec:
             name: dshm
       initContainers:
         - name: test-cuda
-          image: gitlab-registry.nautilus.optiputer.net/xvjiarui0826/TimeSformer:latest
+          image: gitlab-registry.nautilus.optiputer.net/xvjiarui0826/timesformer:latest
           imagePullPolicy: Always
           command: ["/bin/sh"] # replace this with your own job execution scripts
           args: ["-c", "python -c 'import torch;assert torch.cuda.device_count() > 0'"]
@@ -72,7 +72,7 @@ spec:
                     operator: In
                     values:
 #                      - "1070"
-#                      - "1080"
+                      - "1080"
                       - 1080Ti
                       - 2080Ti
                       - titan-xp
