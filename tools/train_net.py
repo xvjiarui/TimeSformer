@@ -530,8 +530,6 @@ def train(cfg):
             wandb_logs.update(val_meter.last_stats)
             wandb.log(wandb_logs)
             print('finish wandb')
-        du.synchronize()
-
 
     if writer is not None:
         writer.close()

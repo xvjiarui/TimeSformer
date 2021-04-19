@@ -182,8 +182,10 @@ def load_pretrained(model, cfg=None, num_classes=1000, in_chans=3, filter_fn=Non
 
     ## Loading the weights
     missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
-    _logger.warning(f'Missing keys: {", ".join(missing_keys)}')
-    _logger.warning(f'Unexpected keys: {", ".join(unexpected_keys)}')
+    if len(missing_keys):
+        _logger.warning(f'Missing keys: {", ".join(missing_keys)}')
+    if len(unexpected_keys):
+        _logger.warning(f'Unexpected keys: {", ".join(unexpected_keys)}')
 
 
 def extract_layer(model, layer):
