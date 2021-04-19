@@ -89,7 +89,10 @@ def resume_checkpoint(model, checkpoint_path, optimizer=None, loss_scaler=None, 
         raise FileNotFoundError()
 
 
-def load_pretrained(model, cfg=None, num_classes=1000, in_chans=3, filter_fn=None, img_size=224, num_patches=196, attention_type='divided_space_time', pretrained_model="", strict=True):
+def load_pretrained(model, cfg=None, num_classes=1000, in_chans=3,
+                    filter_fn=None, img_size=224, num_patches=196,
+                    attention_type='divided_space_time', pretrained_model="",
+                    strict=True):
     if cfg is None:
         cfg = getattr(model, 'default_cfg')
     if cfg is None or 'url' not in cfg or not cfg['url']:
@@ -177,6 +180,23 @@ def load_pretrained(model, cfg=None, num_classes=1000, in_chans=3, filter_fn=Non
                 new_state_dict[new_key] = state_dict[key]
             if 'blocks' in key and 'norm1' in key:
                 new_key = key.replace('norm1','temporal_norm1')
+                new_state_dict[new_key] = state_dict[key]
+        state_dict = new_state_dict
+    ## Initializing temporal attention
+    elif attention_type == 'divided_space_time_full':
+        new_state_dict = state_dict.copy()
+        for key in state_dict:
+            if 'blocks' in key and 'attn' in key:
+                new_key = key.replace('attn','temporal_attn')
+                new_state_dict[new_key] = state_dict[key]
+            if 'blocks' in key and 'norm1' in key:
+                new_key = key.replace('norm1','temporal_norm1')
+                new_state_dict[new_key] = state_dict[key]
+            if 'blocks' in key and 'norm2' in key:
+                new_key = key.replace('norm2', 'temporal_norm2')
+                new_state_dict[new_key] = state_dict[key]
+            if 'blocks' in key and 'mlp' in key:
+                new_key = key.replace('mlp', 'temporal_mlp')
                 new_state_dict[new_key] = state_dict[key]
         state_dict = new_state_dict
 

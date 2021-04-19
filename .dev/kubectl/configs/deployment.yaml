@@ -16,7 +16,7 @@ spec:
         k8s-app: http
     spec:
       containers:
-      - image: gitlab-registry.nautilus.optiputer.net/xvjiarui0826/deit:latest
+      - image: gitlab-registry.nautilus.optiputer.net/xvjiarui0826/timesformer:latest
         name: http-server
         command: ["sh", "-c"]
         args: ["python -m http.server 8000"]
